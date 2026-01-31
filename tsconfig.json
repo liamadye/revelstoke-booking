@@ -40,6 +40,6 @@
     "node_modules",
     "jest.config.ts",
     "jest.setup.ts",
-    "__tests__"
+    "__tests__" // Exclude tests from production build to avoid Jest type errors on Vercel
   ]
 }
