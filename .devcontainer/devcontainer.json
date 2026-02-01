@@ -1,0 +1,34 @@
+{
+    "name": "Revelstoke Booking Workspace",
+    "build": {
+        "dockerfile": "../Dockerfile",
+        "context": ".."
+    },
+    "overrideCommand": true,
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:2": {
+            "installZsh": true,
+            "configureZshAsDefaultShell": true
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "zsh"
+            },
+            "extensions": [
+                "vercel.vercel",
+                "dbaeumer.vscode-eslint"
+            ]
+        }
+    },
+    "forwardPorts": [
+        3000
+    ],
+    "postCreateCommand": "npm install -g vercel && echo 'export PATH=$PATH:$(npm config get prefix)/bin' >> ~/.zshrc",
+    "remoteUser": "root",
+    "mounts": [
+        "source=${localEnv:HOME}/.vercel,target=/root/.vercel,type=bind,consistency=cached",
+        "source=${localEnv:HOME}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached"
+    ]
+}
