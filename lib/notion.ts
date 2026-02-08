@@ -20,6 +20,7 @@ export interface Booking {
   notes?: string;
 }
 
+// Helper to get raw page ID
 export const createBooking = async (booking: Booking) => {
   if (!DATABASE_ID) {
     throw new Error('NOTION_DATABASE_ID is not defined');
@@ -68,19 +69,40 @@ export const createBooking = async (booking: Booking) => {
   return response;
 };
 
+export const updateBookingStatus = async (pageId: string, status: 'Approved' | 'Denied') => {
+  return await notion.pages.update({
+    page_id: pageId,
+    properties: {
+      Status: {
+        select: {
+          name: status,
+        },
+      },
+    },
+  });
+};
+
+export const getBookingDetails = async (pageId: string) => {
+  const page: any = await notion.pages.retrieve({ page_id: pageId });
+  return {
+    name: page.properties.Name.title[0]?.plain_text || 'Guest',
+    email: page.properties.Email.email,
+    startDate: page.properties.Dates.date.start,
+    endDate: page.properties.Dates.date.end,
+  };
+};
+
 export const checkAvailability = async (startDate: Date, endDate: Date) => {
   if (!DATABASE_ID) {
     throw new Error('NOTION_DATABASE_ID is not defined');
   }
 
+  // We only care about APPROVED bookings for blocking.
+  // Pending bookings should be technically "available" to be requested over, 
+  // but we might want to warn or show them as pending.
+  // The prompt says: "can apply to book over dates where there are only a Pending booking".
+  // So checkAvailability should mainly fail if there is an APPROVED booking overlapping.
 
-
-  // Notion date filter is a bit tricky for overlaps. 
-  // Let's refine the query or filter client side for better accuracy.
-  // Query: Get all future active bookings, then check overlap.
-
-  // Check availability
-  // Check availability
   const url = `https://api.notion.com/v1/databases/${DATABASE_ID}/query`;
   const notionVersion = '2022-06-28';
 
@@ -97,7 +119,7 @@ export const checkAvailability = async (startDate: Date, endDate: Date) => {
           {
             property: 'Status',
             select: {
-              does_not_equal: 'Denied',
+              equals: 'Approved', // Only block if Approved
             },
           },
           {
@@ -121,13 +143,14 @@ export const checkAvailability = async (startDate: Date, endDate: Date) => {
 
   const hasOverlap = activeBookings.results.some((page: any) => {
     const start = page.properties.Dates?.date?.start;
-    const end = page.properties.Dates?.date?.end || start; // Single date fallback
+    const end = page.properties.Dates?.date?.end || start;
 
     if (!start) return false;
 
     const existingStart = new Date(start);
     const existingEnd = new Date(end);
 
+    // Standard overlap check
     return (
       startDate < existingEnd && endDate > existingStart
     );
@@ -157,7 +180,7 @@ export const getBlockedDates = async () => {
           {
             property: 'Status',
             select: {
-              does_not_equal: 'Denied',
+              does_not_equal: 'Denied', // Get everything except Denied (so Pending + Approved)
             },
           },
           {
@@ -181,6 +204,7 @@ export const getBlockedDates = async () => {
     return {
       start: page.properties.Dates?.date?.start,
       end: page.properties.Dates?.date?.end || page.properties.Dates?.date?.start,
+      status: page.properties.Status?.select?.name || 'Pending', // pending/approved
     };
-  }).filter(range => range.start); // Filter out invalid ranges
+  }).filter(range => range.start);
 };

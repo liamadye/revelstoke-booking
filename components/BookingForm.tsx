@@ -13,26 +13,23 @@ export default function BookingForm() {
     const [notes, setNotes] = useState("");
     const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
     const [errorMessage, setErrorMessage] = useState("");
-    const [blockedRanges, setBlockedRanges] = useState<{ start: Date; end: Date }[]>([]);
 
-    // Fetch blocked dates on mount
+    // Ranges that are HARD blocked (Approved)
+    const [blockedRanges, setBlockedRanges] = useState<{ start: Date; end: Date }[]>([]);
+    // Ranges that are Pending (Yellow warning)
+    const [pendingRanges, setPendingRanges] = useState<{ start: Date; end: Date }[]>([]);
+
     useEffect(() => {
         const fetchAvailability = async () => {
             try {
                 const res = await fetch("/api/availability");
                 if (res.ok) {
                     const data = await res.json();
-                    const ranges = data.map((r: { start: string; end: string }) => {
-                        // Notion end date is usually the check-out date.
-                        // We want to block nights. 
-                        // So block [Start, End - 1 day].
-                        const start = new Date(r.start);
-                        // Fix timezone offset issues by treating string as local date components if needed, 
-                        // but standard ISO parsing is okay if consistent.
-                        // Actually, Notion returns YYYY-MM-DD which parses to UTC 00:00.
-                        // Local browser might be different. 
-                        // Better to parse YYYY-MM-DD explicitly to local midnight.
 
+                    const approved: { start: Date; end: Date }[] = [];
+                    const pending: { start: Date; end: Date }[] = [];
+
+                    data.forEach((r: { start: string; end: string; status: string }) => {
                         const parseDate = (str: string) => {
                             const [y, m, d] = str.split('-').map(Number);
                             return new Date(y, m - 1, d);
@@ -41,13 +38,21 @@ export default function BookingForm() {
                         const s = parseDate(r.start);
                         const e = parseDate(r.end);
 
-                        // Subtract 1 day from end date to allow checkout/checkin overlap
+                        // Subtract 1 day from end date for overnight logic
                         const adjustedEnd = new Date(e);
                         adjustedEnd.setDate(adjustedEnd.getDate() - 1);
 
-                        return { start: s, end: adjustedEnd };
+                        const range = { start: s, end: adjustedEnd };
+
+                        if (r.status === 'Approved') {
+                            approved.push(range);
+                        } else {
+                            pending.push(range);
+                        }
                     });
-                    setBlockedRanges(ranges);
+
+                    setBlockedRanges(approved);
+                    setPendingRanges(pending);
                 }
             } catch (e) {
                 console.error("Failed to fetch blocked dates", e);
@@ -86,7 +91,6 @@ export default function BookingForm() {
             }
 
             setStatus("success");
-            // Reset form
             setName("");
             setEmail("");
             setNotes("");
@@ -104,9 +108,19 @@ export default function BookingForm() {
         setEndDate(end);
     };
 
+    // Function to assign classes to days
+    const getDayClass = (date: Date) => {
+        // Check if date is in pending ranges
+        const isPending = pendingRanges.some(range =>
+            date >= range.start && date <= range.end
+        );
+        if (isPending) return "pending-date";
+        return "";
+    };
+
     return (
-        <div className="w-full max-w-md mx-auto bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
-            <h3 className="text-2xl font-bold text-gray-900 mb-6 font-display">
+        <div className="w-full max-w-md mx-auto bg-white p-8 rounded-2xl shadow-xl border border-stone-200/60">
+            <h3 className="text-2xl font-bold text-stone-900 mb-6 font-display">
                 Request to Stay
             </h3>
 
@@ -115,13 +129,13 @@ export default function BookingForm() {
                     <div className="flex justify-center">
                         <CheckCircle className="w-16 h-16 text-green-500" />
                     </div>
-                    <h4 className="text-xl font-semibold text-gray-900">Request Sent!</h4>
-                    <p className="text-gray-600">
+                    <h4 className="text-xl font-semibold text-stone-900">Request Sent!</h4>
+                    <p className="text-stone-600">
                         We've received your booking request. Check your email for confirmation.
                     </p>
                     <button
                         onClick={() => setStatus("idle")}
-                        className="mt-4 px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                        className="mt-4 px-6 py-2 bg-stone-900 text-white rounded-lg hover:bg-stone-800 transition-colors"
                     >
                         Make another request
                     </button>
@@ -129,7 +143,7 @@ export default function BookingForm() {
             ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Dates</label>
+                        <label className="block text-sm font-medium text-stone-700">Dates</label>
                         <div className="relative">
                             <DatePicker
                                 selected={startDate}
@@ -139,23 +153,29 @@ export default function BookingForm() {
                                 selectsRange
                                 minDate={new Date()}
                                 excludeDateIntervals={blockedRanges}
+                                dayClassName={getDayClass}
                                 placeholderText="Select check-in & check-out"
-                                className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                calendarClassName="!border-0 !shadow-lg !font-sans !rounded-xl"
+                                className="w-full pl-10 pr-4 py-3 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-500 focus:border-transparent outline-none transition-all"
+                                calendarClassName="!border-0 !shadow-lg !font-sans !rounded-xl overflow-hidden"
                             />
-                            <CalendarIcon className="w-5 h-5 text-gray-400 absolute left-3 top-3.5 pointer-events-none" />
+                            <CalendarIcon className="w-5 h-5 text-stone-400 absolute left-3 top-3.5 pointer-events-none" />
                         </div>
+                        {pendingRanges.length > 0 && (
+                            <p className="text-xs text-stone-500 flex items-center gap-1 mt-1">
+                                <span className="w-2 h-2 rounded-full bg-yellow-200 inline-block" /> Yellow dates are pending but can still be requested
+                            </p>
+                        )}
                     </div>
 
                     <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Your Details</label>
+                        <label className="block text-sm font-medium text-stone-700">Your Details</label>
                         <input
                             type="text"
                             placeholder="Full Name"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             required
-                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400"
+                            className="w-full px-4 py-3 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-500 focus:border-transparent outline-none transition-all placeholder:text-stone-400"
                         />
                         <input
                             type="email"
@@ -163,20 +183,20 @@ export default function BookingForm() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
-                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400"
+                            className="w-full px-4 py-3 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-500 focus:border-transparent outline-none transition-all placeholder:text-stone-400"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                            Notes <span className="text-gray-400 font-normal">(Optional)</span>
+                        <label className="block text-sm font-medium text-stone-700">
+                            Notes <span className="text-stone-400 font-normal">(Optional)</span>
                         </label>
                         <textarea
                             placeholder="Any special requests or details?"
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             rows={3}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-gray-400 resize-none"
+                            className="w-full px-4 py-3 border border-stone-200 rounded-lg focus:ring-2 focus:ring-stone-500 focus:border-transparent outline-none transition-all placeholder:text-stone-400 resize-none"
                         />
                     </div>
 
@@ -190,7 +210,7 @@ export default function BookingForm() {
                     <button
                         type="submit"
                         disabled={status === "loading"}
-                        className="w-full flex justify-center items-center py-3 px-4 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-[0.98]"
+                        className="w-full flex justify-center items-center py-3 px-4 bg-stone-900 text-white rounded-lg font-medium hover:bg-stone-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform active:scale-[0.98]"
                     >
                         {status === "loading" ? (
                             <>

@@ -27,9 +27,9 @@ export default function Home() {
       </div>
 
       <div className="container mx-auto px-6 py-24">
-        <div className="grid lg:grid-cols-12 gap-16">
+        <div className="flex flex-col-reverse lg:grid lg:grid-cols-12 gap-16">
           {/* Left Column: Content */}
-          <div className="lg:col-span-7 space-y-20">
+          <div className="lg:col-span-7 space-y-20 mt-12 lg:mt-0">
 
             <section className="prose prose-lg text-stone-600 max-w-none">
               <h2 className="text-4xl font-bold text-stone-900 mb-8 font-display tracking-tight">The Space</h2>
@@ -97,7 +97,7 @@ export default function Home() {
           </div>
 
           {/* Right Column: Sticky Booking Form */}
-          <div className="lg:col-span-5 relative">
+          <div className="lg:col-span-5 relative w-full">
             <div className="sticky top-12">
               <div className="absolute -inset-4 bg-gradient-to-tr from-blue-50 to-stone-50 rounded-3xl blur-2xl opacity-50 -z-10" />
               <BookingForm />
@@ -112,7 +112,7 @@ export default function Home() {
 
       <footer className="bg-stone-900 text-white py-16 border-t border-stone-800">
         <div className="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center opacity-60 text-sm">
-          <p>&copy; {new Date().getFullYear()} Liam & Partner</p>
+          <p>&copy; {new Date().getFullYear()} Liam & Lauren</p>
           <div className="flex gap-6 mt-4 md:mt-0">
             <span>24-414 Humbert Street, Revelstoke</span>
           </div>

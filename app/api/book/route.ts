@@ -28,7 +28,7 @@ export async function POST(request: Request) {
         }
 
         // Create Booking in Notion
-        await createBooking({
+        const notionPage = await createBooking({
             name,
             email,
             startDate: start,
@@ -44,6 +44,7 @@ export async function POST(request: Request) {
                 startDate: start,
                 endDate: end,
                 notes,
+                pageId: notionPage.id, // Pass ID for action links
             });
         } catch (emailError) {
             console.error('Failed to send email:', emailError);

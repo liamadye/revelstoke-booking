@@ -5,30 +5,22 @@
         "context": ".."
     },
     "overrideCommand": true,
-    "features": {
-        "ghcr.io/devcontainers/features/common-utils:2": {
-            "installZsh": true,
-            "configureZshAsDefaultShell": true
-        }
-    },
     "customizations": {
         "vscode": {
             "settings": {
-                "terminal.integrated.defaultProfile.linux": "zsh"
-            },
-            "extensions": [
-                "vercel.vercel",
-                "dbaeumer.vscode-eslint"
-            ]
+                "terminal.integrated.defaultProfile.linux": "bash"
+            }
         }
     },
     "forwardPorts": [
         3000
     ],
-    "postCreateCommand": "npm install -g vercel && echo 'export PATH=$PATH:$(npm config get prefix)/bin' >> ~/.zshrc",
+    // We use the exact install logic that worked manually
+    "postCreateCommand": "npm install -g vercel --prefix /usr/local && (ln -s /root/host-home/.gitconfig /root/.gitconfig || true) && echo 'export PATH=$PATH:/usr/local/bin' >> ~/.bashrc",
     "remoteUser": "root",
     "mounts": [
         "source=${localEnv:HOME}/.vercel,target=/root/.vercel,type=bind,consistency=cached",
-        "source=${localEnv:HOME}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached"
+        // Mounting the HOME folder prevents the "Device Busy" error
+        "source=${localEnv:HOME},target=/root/host-home,type=bind,consistency=cached"
     ]
 }
